@@ -1,24 +1,35 @@
 import { useState } from "react";
-import { Eye, EyeOff, Github, Chrome } from "lucide-react";
+import { Smartphone, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 
 interface LoginFormProps {
   onSwitchToSignup: () => void;
 }
 
 export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
-  const [showPassword, setShowPassword] = useState(false);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [step, setStep] = useState<'mobile' | 'otp'>('mobile');
+  const [mobile, setMobile] = useState("");
+  const [otp, setOtp] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleMobileSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle login logic here
-    console.log("Login:", { email, password });
+    if (mobile.length >= 10) {
+      setStep('otp');
+    }
+  };
+
+  const handleOtpSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (otp === "123456") {
+      // Dummy OTP validation - redirect to dashboard
+      window.location.href = "/dashboard";
+    } else {
+      alert("Invalid OTP. Use: 123456");
+    }
   };
 
   return (
@@ -36,78 +47,68 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
       </CardHeader>
 
       <CardContent className="space-y-6">
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="Enter your email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-          </div>
+        {step === 'mobile' ? (
+          <form onSubmit={handleMobileSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="mobile">Mobile Number</Label>
+              <div className="relative">
+                <Smartphone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="mobile"
+                  type="tel"
+                  placeholder="+1 (555) 123-4567"
+                  value={mobile}
+                  onChange={(e) => setMobile(e.target.value)}
+                  className="pl-10"
+                  required
+                />
+              </div>
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <div className="relative">
-              <Input
-                id="password"
-                type={showPassword ? "text" : "password"}
-                placeholder="Enter your password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                onClick={() => setShowPassword(!showPassword)}
+            <Button type="submit" className="w-full bg-primary hover:bg-primary-hover">
+              Send OTP
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </form>
+        ) : (
+          <form onSubmit={handleOtpSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="otp">Enter OTP</Label>
+              <p className="text-sm text-muted-foreground">
+                We've sent a 6-digit code to {mobile}
+              </p>
+              <div className="flex justify-center">
+                <InputOTP maxLength={6} value={otp} onChange={setOtp}>
+                  <InputOTPGroup>
+                    <InputOTPSlot index={0} />
+                    <InputOTPSlot index={1} />
+                    <InputOTPSlot index={2} />
+                    <InputOTPSlot index={3} />
+                    <InputOTPSlot index={4} />
+                    <InputOTPSlot index={5} />
+                  </InputOTPGroup>
+                </InputOTP>
+              </div>
+              <p className="text-xs text-muted-foreground text-center">
+                Demo OTP: 123456
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Button type="submit" className="w-full bg-primary hover:bg-primary-hover">
+                Verify OTP
+              </Button>
+              <Button 
+                type="button" 
+                variant="outline" 
+                className="w-full"
+                onClick={() => setStep('mobile')}
               >
-                {showPassword ? (
-                  <EyeOff className="h-4 w-4 text-muted-foreground" />
-                ) : (
-                  <Eye className="h-4 w-4 text-muted-foreground" />
-                )}
+                Change Number
               </Button>
             </div>
-          </div>
-
-          <div className="flex items-center justify-end">
-            <Button variant="link" className="text-sm text-muted-foreground p-0">
-              Forgot password?
-            </Button>
-          </div>
-
-          <Button type="submit" className="w-full bg-primary hover:bg-primary-hover">
-            Sign In
-          </Button>
-        </form>
-
-        <div className="space-y-4">
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <Separator className="w-full" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <Button variant="outline" className="w-full">
-              <Chrome className="mr-2 h-4 w-4" />
-              Google
-            </Button>
-            <Button variant="outline" className="w-full">
-              <Github className="mr-2 h-4 w-4" />
-              GitHub
-            </Button>
-          </div>
-        </div>
+          </form>
+        )}
       </CardContent>
 
       <CardFooter className="justify-center">
