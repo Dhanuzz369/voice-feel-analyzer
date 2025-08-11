@@ -5,6 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
+import { useAuth } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
 
 interface LoginFormProps {
   onSwitchToSignup: () => void;
@@ -14,6 +16,8 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
   const [step, setStep] = useState<'mobile' | 'otp'>('mobile');
   const [mobile, setMobile] = useState("");
   const [otp, setOtp] = useState("");
+  const { login } = useAuth();
+  const navigate = useNavigate();
 
   const handleMobileSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,8 +29,8 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
   const handleOtpSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (otp === "123456") {
-      // Dummy OTP validation - redirect to dashboard
-      window.location.href = "/dashboard";
+      login(mobile);
+      navigate("/dashboard");
     } else {
       alert("Invalid OTP. Use: 123456");
     }

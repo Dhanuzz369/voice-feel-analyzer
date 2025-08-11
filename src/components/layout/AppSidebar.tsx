@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Home, BarChart3, Settings, History, HelpCircle, LogOut, User } from "lucide-react";
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 
 import {
   Sidebar,
@@ -35,8 +36,15 @@ const navigationItems = [
 export function AppSidebar() {
   const { state } = useSidebar();
   const location = useLocation();
+  const navigate = useNavigate();
+  const { logout } = useAuth();
   const currentPath = location.pathname;
   const collapsed = state === "collapsed";
+
+  const handleLogout = () => {
+    logout();
+    navigate('/auth');
+  };
 
   const isActive = (path: string) => currentPath === path;
 
@@ -123,10 +131,10 @@ export function AppSidebar() {
                   <Settings className="mr-2 h-4 w-4" />
                   Settings
                 </DropdownMenuItem>
-                <DropdownMenuItem className="text-destructive">
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Logout
-                </DropdownMenuItem>
+                 <DropdownMenuItem className="text-destructive" onClick={handleLogout}>
+                   <LogOut className="mr-2 h-4 w-4" />
+                   Logout
+                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (

@@ -1,17 +1,22 @@
 import { useState, useCallback } from "react";
-import { Upload, FileAudio, X } from "lucide-react";
+import { Upload, FileAudio, X, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
+import { useAnalysis } from "@/hooks/useAnalysis";
+import { analyzeAudio } from "@/services/api";
 
 interface UploadAreaProps {
-  onFileSelect: (file: File) => void;
+  onFileSelect?: (file: File) => void;
 }
 
 export function UploadArea({ onFileSelect }: UploadAreaProps) {
   const [isDragOver, setIsDragOver] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const { addAnalysis, setAnalyzing, isAnalyzing, setError } = useAnalysis();
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -54,13 +59,37 @@ export function UploadArea({ onFileSelect }: UploadAreaProps) {
     setSelectedFile(null);
   };
 
-  const analyzeFile = () => {
-    if (selectedFile) {
+  const analyzeFile = async () => {
+    if (!selectedFile) return;
+
+    try {
+      setAnalyzing(true);
+      setError(null);
+      
       toast({
         title: "Analysis started",
         description: "Your audio file is being processed...",
       });
-      // Navigate to results page - would be handled by parent component
+
+      const result = await analyzeAudio(selectedFile);
+      addAnalysis(result);
+      
+      toast({
+        title: "Analysis complete",
+        description: `Detected emotion: ${result.primaryEmotion} (${result.confidence}% confidence)`,
+      });
+      
+      navigate('/results');
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to analyze audio';
+      setError(errorMessage);
+      toast({
+        title: "Analysis failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setAnalyzing(false);
     }
   };
 
@@ -138,8 +167,16 @@ export function UploadArea({ onFileSelect }: UploadAreaProps) {
               size="lg"
               className="bg-accent hover:bg-accent-hover text-accent-foreground px-8"
               onClick={analyzeFile}
+              disabled={isAnalyzing}
             >
-              Analyze Emotion
+              {isAnalyzing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Analyzing...
+                </>
+              ) : (
+                'Analyze Emotion'
+              )}
             </Button>
           </div>
         </div>

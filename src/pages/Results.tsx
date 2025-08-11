@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { EmotionResult } from "@/components/analysis/EmotionResult";
@@ -6,32 +6,67 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Play, Pause, Download, Share, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-
-// Mock data for demonstration
-const mockAnalysis = {
-  filename: "presentation_recording.wav",
-  primaryEmotion: "Happy",
-  confidence: 87,
-  duration: "3:42",
-  allEmotions: [
-    { emotion: "Happy", confidence: 87 },
-    { emotion: "Neutral", confidence: 9 },
-    { emotion: "Surprise", confidence: 4 }
-  ]
-};
+import { useAnalysis } from "@/hooks/useAnalysis";
+import { downloadReport } from "@/services/api";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Results() {
   const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const audioRef = useRef<HTMLAudioElement>(null);
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const { currentAnalysis } = useAnalysis();
+
+  useEffect(() => {
+    if (!currentAnalysis) {
+      navigate('/dashboard');
+    }
+  }, [currentAnalysis, navigate]);
 
   const togglePlay = () => {
-    setIsPlaying(!isPlaying);
+    if (audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.pause();
+      } else {
+        audioRef.current.play();
+      }
+      setIsPlaying(!isPlaying);
+    }
   };
 
-  const downloadReport = () => {
-    // Mock download functionality
-    console.log("Downloading report...");
+  const handleDownloadReport = () => {
+    if (currentAnalysis) {
+      downloadReport(currentAnalysis, 'json');
+      toast({
+        title: "Report downloaded",
+        description: "Analysis report has been saved as JSON file",
+      });
+    }
   };
+
+  const handleTimeUpdate = () => {
+    if (audioRef.current) {
+      setCurrentTime(audioRef.current.currentTime);
+    }
+  };
+
+  const handleLoadedMetadata = () => {
+    if (audioRef.current) {
+      setDuration(audioRef.current.duration);
+    }
+  };
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  if (!currentAnalysis) {
+    return null;
+  }
 
   return (
     <SidebarProvider>
@@ -54,16 +89,16 @@ export default function Results() {
                 </Button>
               </div>
               
-              <div className="flex items-center space-x-2">
-                <Button variant="outline" onClick={downloadReport}>
-                  <Download className="w-4 h-4 mr-2" />
-                  Download Report
-                </Button>
-                <Button variant="outline">
-                  <Share className="w-4 h-4 mr-2" />
-                  Share
-                </Button>
-              </div>
+               <div className="flex items-center space-x-2">
+                 <Button variant="outline" onClick={handleDownloadReport}>
+                   <Download className="w-4 h-4 mr-2" />
+                   Download Report
+                 </Button>
+                 <Button variant="outline">
+                   <Share className="w-4 h-4 mr-2" />
+                   Share
+                 </Button>
+               </div>
             </div>
           </header>
 
@@ -77,11 +112,23 @@ export default function Results() {
                     <CardTitle className="text-lg">Audio Analysis</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    {/* File Info */}
-                    <div className="space-y-2">
-                      <h3 className="font-semibold text-xl">{mockAnalysis.filename}</h3>
-                      <p className="text-muted-foreground">Duration: {mockAnalysis.duration}</p>
-                    </div>
+                     {/* File Info */}
+                     <div className="space-y-2">
+                       <h3 className="font-semibold text-xl">{currentAnalysis.filename}</h3>
+                       <p className="text-muted-foreground">Duration: {currentAnalysis.duration}</p>
+                     </div>
+
+                     {/* Hidden Audio Element */}
+                     {currentAnalysis.audioUrl && (
+                       <audio
+                         ref={audioRef}
+                         src={currentAnalysis.audioUrl}
+                         onTimeUpdate={handleTimeUpdate}
+                         onLoadedMetadata={handleLoadedMetadata}
+                         onEnded={() => setIsPlaying(false)}
+                         className="hidden"
+                       />
+                     )}
 
                     {/* Audio Player */}
                     <div className="space-y-4">
@@ -99,16 +146,19 @@ export default function Results() {
                         </Button>
                       </div>
 
-                      {/* Progress Bar */}
-                      <div className="space-y-2">
-                        <div className="w-full bg-muted rounded-full h-2">
-                          <div className="bg-primary h-2 rounded-full" style={{ width: "35%" }}></div>
-                        </div>
-                        <div className="flex justify-between text-sm text-muted-foreground">
-                          <span>1:18</span>
-                          <span>{mockAnalysis.duration}</span>
-                        </div>
-                      </div>
+                       {/* Progress Bar */}
+                       <div className="space-y-2">
+                         <div className="w-full bg-muted rounded-full h-2">
+                           <div 
+                             className="bg-primary h-2 rounded-full transition-all" 
+                             style={{ width: `${duration ? (currentTime / duration) * 100 : 0}%` }}
+                           />
+                         </div>
+                         <div className="flex justify-between text-sm text-muted-foreground">
+                           <span>{formatTime(currentTime)}</span>
+                           <span>{currentAnalysis.duration}</span>
+                         </div>
+                       </div>
                     </div>
 
                     {/* Waveform Visualization */}
@@ -149,23 +199,23 @@ export default function Results() {
                         <p className="text-sm text-muted-foreground">Channels</p>
                         <p className="font-semibold">Mono</p>
                       </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Processing Time</p>
-                        <p className="font-semibold">1.2s</p>
-                      </div>
+                       <div>
+                         <p className="text-sm text-muted-foreground">Processing Time</p>
+                         <p className="font-semibold">{currentAnalysis.processingTime || '1.2s'}</p>
+                       </div>
                     </div>
                   </CardContent>
                 </Card>
               </div>
 
-              {/* Right Column - Emotion Results */}
-              <div>
-                <EmotionResult
-                  primaryEmotion={mockAnalysis.primaryEmotion}
-                  confidence={mockAnalysis.confidence}
-                  allEmotions={mockAnalysis.allEmotions}
-                />
-              </div>
+               {/* Right Column - Emotion Results */}
+               <div>
+                 <EmotionResult
+                   primaryEmotion={currentAnalysis.primaryEmotion}
+                   confidence={currentAnalysis.confidence}
+                   allEmotions={currentAnalysis.allEmotions}
+                 />
+               </div>
             </div>
           </div>
         </main>

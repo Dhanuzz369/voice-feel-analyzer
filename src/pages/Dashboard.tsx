@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { UploadArea } from "@/components/dashboard/UploadArea";
 import { RecentAnalyses } from "@/components/dashboard/RecentAnalyses";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Brain, FileAudio, TrendingUp, Users } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
 
 const stats = [
   {
@@ -34,11 +36,14 @@ const stats = [
 ];
 
 export default function Dashboard() {
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
 
-  const handleFileSelect = (file: File) => {
-    setSelectedFile(file);
-  };
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate('/auth');
+    }
+  }, [isAuthenticated, navigate]);
 
   return (
     <SidebarProvider>
@@ -96,7 +101,7 @@ export default function Dashboard() {
                       Upload an audio file to detect emotions using our advanced AI model
                     </p>
                   </div>
-                  <UploadArea onFileSelect={handleFileSelect} />
+                  <UploadArea />
                 </div>
 
                 {/* Quick Start Guide */}
